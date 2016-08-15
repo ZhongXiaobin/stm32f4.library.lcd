@@ -103,7 +103,7 @@ void LCD_DisplayOff(void)
  * @Description 简单的延时函数,延时i
  * @notice 当mdk -O1时间优化时需要设置
  */
-void opt_delay(u8 i)
+void LCD_Delay(u8 i)
 {
 	while (i--);
 }
@@ -154,13 +154,13 @@ u16 LCD_ReadPoint(u16 x, u16 y)
 	r = LCD_ReadData();
 
 	/*简单延时一下，准备下次读取*/
-	opt_delay(2);
+	LCD_Delay(2);
 
 	/*读取颜色值，读取到的格式：RRRRRxxx GGGGGGxx*/
 	r = LCD_ReadData();
 
 	/*简单延时一下，准备下次读取*/
-	opt_delay(2);
+	LCD_Delay(2);
 
 	/*继续读取颜色值，读取到的格式：BBBBBxxx xxxxxxxx*/
 	b = LCD_ReadData();
@@ -674,65 +674,85 @@ u32 LCD_Pow(u8 m, u8 n)
 }
 
 /**
- * @Description 显示数字,高位为0,则不显示
+ * @Description 显示数字
  * @param x,y 起始坐标
- * @param len 数字的位数
- * @param size 字体大小 12/16/24
- * @param color 颜色
  * @param num 数值(0~4294967295)
+ * @param size 字体大小 12/16/24
+ * @notice 高位为0表示8进制数
  */
-void LCD_ShowNum(u16 x, u16 y, u32 num, u8 len, u8 size)
+u8 LCD_ShowInt(u16 x, u16 y, u32 num, u8 size)
 {
-	u8 t, temp;
-	u8 enshow = 0;
-	for (t = 0; t < len; t++)
+	/*for循环使用到的变量*/
+	int i = 0;
+
+	/*记录整数位数的变量，位数 = t+1*/
+	u8 t = 0;
+
+	/*记录整数每一位数值的数组*/
+	u8 temp[10];
+
+	/*从高位向低位依次取出每一位的数值，存入temp数组中*/
+	for (i = 9; i >= 0; i--)
 	{
-		temp = (num / LCD_Pow(10, len - t - 1)) % 10;
-		if (enshow == 0 && t < (len - 1))
-		{
-			if (temp == 0)
-			{
-				LCD_ShowChar(x + (size / 2) * t, y, ' ', size, 0);
-				continue;
-			}
-			else
-			{
-				enshow = 1;
-			}
-		}
-		LCD_ShowChar(x + (size / 2) * t, y, temp + '0', size, 0);
+		temp[i] = num / LCD_Pow(10, i);
+		num = num % LCD_Pow(10, i);
 	}
+
+	/*从最高位开始，找出第一个不为0的数值*/
+	for (i = 9; i >= 0; i--)
+	{
+		if (temp[i] != 0 || i == 0)
+			break;
+	}
+
+	/*记录位数*/
+	t = i;
+
+	/*在屏幕上绘制*/
+	for (i = 0; i <= t; i++)
+	{
+		LCD_ShowChar(x + size / 2 * i, y, temp[t - i] + 48, size, DRAW_DIRECT);
+	}
+
+	/*返回位数*/
+	return (t + 1);
 }
 
-/**
- * @Description 显示数字,高位为0的情况,依然显示
- * @param x,y 起点坐标
- * @param num 数值(0~999999999)
- * @param len 长度(即要显示的位数)
- * @param size 字体大小
- * @param mode mode[7]:0,不填充;1,填充0 mode[0]:0,非叠加显示;1,叠加显示
- */
-void LCD_ShowxNum(u16 x, u16 y, u32 num, u8 len, u8 size, u8 mode)
+void LCD_ShowFloat(u16 x, u16 y, float num, u8 size)
 {
-	u8 t, temp;
-	u8 enshow = 0;
-	for (t = 0; t < len; t++)
+	/*取出整数部分*/
+	u32 ZhengShu = num / 1;
+
+	/*取出小数部分*/
+	float XiaoShu = num - ZhengShu;
+
+	/*取出小数部分前3位*/
+	XiaoShu = XiaoShu * 1000;
+
+	/*摈弃小数点前三位之后的数据*/
+	u16 Conversion = XiaoShu / 1;
+
+	/*绘制整数部分，并得到整数部分长度*/
+	u8 length = LCD_ShowInt(x, y, ZhengShu, size);
+
+	/*绘制小数点*/
+	LCD_ShowChar(x + length * size / 2, y, '.', size, DRAW_DIRECT);
+
+	/*绘制小数部分*/
+	if (XiaoShu < 10)
 	{
-		temp = (num / LCD_Pow(10, len - t - 1)) % 10;
-		if (enshow == 0 && t < (len - 1))
-		{
-			if (temp == 0)
-			{
-				if (mode & 0x80)
-					LCD_ShowChar(x + (size / 2) * t, y, '0', size, mode & 0X01);
-				else
-					LCD_ShowChar(x + (size / 2) * t, y, ' ', size, mode & 0X01);
-				continue;
-			}
-			else
-				enshow = 1;
-		}
-		LCD_ShowChar(x + (size / 2) * t, y, temp + '0', size, mode & 0X01);
+		LCD_ShowChar(x + (length + 1) * size / 2, y, '0', size, DRAW_DIRECT);
+		LCD_ShowChar(x + (length + 2) * size / 2, y, '0', size, DRAW_DIRECT);
+		LCD_ShowInt(x + (length + 3) * size / 2, y, Conversion, size);
+	}
+	else if (XiaoShu < 100)
+	{
+		LCD_ShowChar(x + (length + 1) * size / 2, y, '0', size, DRAW_DIRECT);
+		LCD_ShowInt(x + (length + 2) * size / 2, y, Conversion, size);
+	}
+	else
+	{
+		LCD_ShowInt(x + (length + 1) * size / 2, y, Conversion, size);
 	}
 }
 
