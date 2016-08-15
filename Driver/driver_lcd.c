@@ -2,7 +2,7 @@
 #include "font.h"
 
 /*@notice 本程序只适用4.3寸LCD，主控IC为NT35510*/
-/*@notice LCD驱动版本 Lcd v1.1.1*/
+/*@notice LCD驱动版本 Lcd v1.1.3*/
 
 /*LCD的画笔颜色*/
 u16 POINT_COLOR = 0x0000;
@@ -170,7 +170,7 @@ u16 LCD_ReadPoint(u16 x, u16 y)
 	g = (r & 0xff) << 8;
 
 	/*格式为 RRRRRGGG GGGBBBBB，因此需要移位操作*/
-	return (r | (g >> 5) | (b >> 11));
+	return (((r >> 11) << 11) | ((g >> 10) << 5) | (b >> 11));
 }
 
 /**
@@ -763,7 +763,7 @@ u8 LCD_ShowFloat(u16 x, u16 y, float num, u8 size)
 	{
 		LCD_ShowInt(x + (length + 1) * size / 2, y, Conversion, size);
 	}
-	
+
 	/*返回长度值*/
 	return length + 4;
 }
