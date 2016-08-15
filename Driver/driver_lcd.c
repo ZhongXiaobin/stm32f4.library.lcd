@@ -2,6 +2,7 @@
 #include "font.h"
 
 /*@notice 本程序只适用4.3寸LCD，主控IC为NT35510*/
+/*@notice LCD驱动版本 Lcd v1.1.0*/
 
 /*LCD的画笔颜色*/
 u16 POINT_COLOR = 0x0000;
@@ -718,6 +719,12 @@ u8 LCD_ShowInt(u16 x, u16 y, u32 num, u8 size)
 	return (t + 1);
 }
 
+/**
+ * @Description 显示小数
+ * @param x,y 起始坐标
+ * @param num 数值
+ * @param size 字体大小 12/16/24
+ */
 void LCD_ShowFloat(u16 x, u16 y, float num, u8 size)
 {
 	/*取出整数部分*/
