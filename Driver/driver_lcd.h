@@ -100,7 +100,7 @@ void LCD_DrawCircle(u16 x0, u16 y0, u8 r);
 void LCD_ShowChar(u16 x, u16 y, u8 num, u8 size, u8 mode);
 u32 LCD_Pow(u8 m, u8 n);
 u8 LCD_ShowInt(u16 x, u16 y, u32 num, u8 size);
-void LCD_ShowFloat(u16 x, u16 y, float num, u8 size);
+u8 LCD_ShowFloat(u16 x, u16 y, float num, u8 size);
 void LCD_ShowString(u16 x, u16 y, u16 width, u16 height, u8 size, char *p);
 void LCD_Init(void);
 

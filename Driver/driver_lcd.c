@@ -2,7 +2,7 @@
 #include "font.h"
 
 /*@notice 本程序只适用4.3寸LCD，主控IC为NT35510*/
-/*@notice LCD驱动版本 Lcd v1.1.0*/
+/*@notice LCD驱动版本 Lcd v1.1.1*/
 
 /*LCD的画笔颜色*/
 u16 POINT_COLOR = 0x0000;
@@ -679,6 +679,7 @@ u32 LCD_Pow(u8 m, u8 n)
  * @param x,y 起始坐标
  * @param num 数值(0~4294967295)
  * @param size 字体大小 12/16/24
+ * @return 占用屏幕的长度
  * @notice 高位为0表示8进制数
  */
 u8 LCD_ShowInt(u16 x, u16 y, u32 num, u8 size)
@@ -723,9 +724,10 @@ u8 LCD_ShowInt(u16 x, u16 y, u32 num, u8 size)
  * @Description 显示小数
  * @param x,y 起始坐标
  * @param num 数值
+ * @return 占用屏幕的长度
  * @param size 字体大小 12/16/24
  */
-void LCD_ShowFloat(u16 x, u16 y, float num, u8 size)
+u8 LCD_ShowFloat(u16 x, u16 y, float num, u8 size)
 {
 	/*取出整数部分*/
 	u32 ZhengShu = num / 1;
@@ -761,6 +763,9 @@ void LCD_ShowFloat(u16 x, u16 y, float num, u8 size)
 	{
 		LCD_ShowInt(x + (length + 1) * size / 2, y, Conversion, size);
 	}
+	
+	/*返回长度值*/
+	return length + 4;
 }
 
 /**
