@@ -12,7 +12,7 @@ u16 USART_RX_STA = 0;
 u8 USART_RX_BUF[USART_REC_LEN];
 
 /**
- * @Description 初始化I/O串口1
+ * @Description 初始化I/O串口2
  * @param bound 波特率
  */
 void Usart_Init(u32 bound)
@@ -42,9 +42,9 @@ void Usart_Init(u32 bound)
 	USART_InitStructure.USART_BaudRate = bound;
 	/*设置串口字长为8位数据格式*/
 	USART_InitStructure.USART_WordLength = USART_WordLength_8b;
-	/*设置串口一位停止位*/
+	/*设置串口停止位为1位*/
 	USART_InitStructure.USART_StopBits = USART_StopBits_1;
-	/*设置串口无停止位*/
+	/*设置串口无奇偶校验*/
 	USART_InitStructure.USART_Parity = USART_Parity_No;
 	/*设置串口无硬件数据流控制*/
 	USART_InitStructure.USART_HardwareFlowControl = USART_HardwareFlowControl_None;
@@ -52,15 +52,15 @@ void Usart_Init(u32 bound)
 	USART_InitStructure.USART_Mode = USART_Mode_Rx | USART_Mode_Tx;
 	USART_Init(USART2, &USART_InitStructure);
 
-	/*第五步：使能串口2*/
-	USART_Cmd(USART2, ENABLE);
-
-	/*第六步：配置串口2中断*/
+	/*第五步：配置串口2中断*/
 	NVIC_InitStructure.NVIC_IRQChannel = USART2_IRQn;
 	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 3;
 	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 3;
 	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
 	NVIC_Init(&NVIC_InitStructure);
+	
+	/*第六步：使能串口2*/
+	USART_Cmd(USART2, ENABLE);
 
 	/*第七步：开启串口2中断*/
 	USART_ITConfig(USART2, USART_IT_RXNE, ENABLE);
