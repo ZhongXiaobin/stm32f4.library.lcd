@@ -23,72 +23,71 @@ void Usart_Init(u32 bound)
 
 	/*第一步：使能外设时钟*/
 	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOA, ENABLE);
-	RCC_APB2PeriphClockCmd(RCC_APB2Periph_USART1, ENABLE);
+	RCC_APB1PeriphClockCmd(RCC_APB1Periph_USART2, ENABLE);
 
-	/*第二步:配置串口1对应的GPIO，设置为复用推挽输出*/
-	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_9 | GPIO_Pin_10;
+	/*第二步:配置串口2对应的GPIO，设置为复用推挽输出*/
+	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_2 | GPIO_Pin_3;
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF;
 	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
 	GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
 	GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_UP;
 	GPIO_Init(GPIOA, &GPIO_InitStructure);
 
-	/*第三步：设置串口1对应的GPIO复用映射*/
-	GPIO_PinAFConfig(GPIOA, GPIO_PinSource9, GPIO_AF_USART1);
-	GPIO_PinAFConfig(GPIOA, GPIO_PinSource10, GPIO_AF_USART1);
+	/*第三步：设置串口2对应的GPIO复用映射*/
+	GPIO_PinAFConfig(GPIOA, GPIO_PinSource2, GPIO_AF_USART2);
+	GPIO_PinAFConfig(GPIOA, GPIO_PinSource3, GPIO_AF_USART2);
 
-	/*第四步：USART1初始化设置*/
+	/*第四步：USART2初始化设置*/
 	/*根据参数设置波特率*/
 	USART_InitStructure.USART_BaudRate = bound;
-	/*字长为8位数据格式*/
+	/*设置串口字长为8位数据格式*/
 	USART_InitStructure.USART_WordLength = USART_WordLength_8b;
-	/*一位停止位*/
+	/*设置串口一位停止位*/
 	USART_InitStructure.USART_StopBits = USART_StopBits_1;
-	/*无停止位*/
+	/*设置串口无停止位*/
 	USART_InitStructure.USART_Parity = USART_Parity_No;
-	/*无硬件数据流控制*/
+	/*设置串口无硬件数据流控制*/
 	USART_InitStructure.USART_HardwareFlowControl = USART_HardwareFlowControl_None;
-	/*收发模式*/
+	/*设置串口工作模式为收发模式*/
 	USART_InitStructure.USART_Mode = USART_Mode_Rx | USART_Mode_Tx;
-	/*初始化串口1*/
-	USART_Init(USART1, &USART_InitStructure);
+	USART_Init(USART2, &USART_InitStructure);
 
-	/*第五步：使能串口1*/
-	USART_Cmd(USART1, ENABLE);
+	/*第五步：使能串口2*/
+	USART_Cmd(USART2, ENABLE);
 
-	/*第六步：配置串口1中断*/
-	NVIC_InitStructure.NVIC_IRQChannel = USART1_IRQn;
+	/*第六步：配置串口2中断*/
+	NVIC_InitStructure.NVIC_IRQChannel = USART2_IRQn;
 	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 3;
 	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 3;
 	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
 	NVIC_Init(&NVIC_InitStructure);
 
-	/*第七步：开启串口1中断*/
-	USART_ITConfig(USART1, USART_IT_RXNE, ENABLE);
+	/*第七步：开启串口2中断*/
+	USART_ITConfig(USART2, USART_IT_RXNE, ENABLE);
 }
 
 /**
- * @Description 串口1中断服务函数，每有接收一个字节，申请一次中断，中断函数里面接收，直到接收到换行停止接收
+ * @Description 串口2中断服务函数，每有接收一个字节，申请一次中断，中断函数里面接收，直到接收到换行停止接收
  */
-void USART1_IRQHandler(void)
+void USART2_IRQHandler(void)
 {
 	/*用于保存本次串口接收到的字节*/
 	u8 Res;
 
 	/*判断是不是接收中断，如果是接收中断，执行if里面的代码*/
-	if (USART_GetITStatus(USART1, USART_IT_RXNE) != RESET)
+	if(USART_GetITStatus(USART2, USART_IT_RXNE) != RESET)
 	{
 		/*读取串口1接收到的数据*/
-		Res = USART_ReceiveData(USART1);
+		Res = USART_ReceiveData(USART2);
 
 		/*接收未完成，这里接收的是一大串字节*/
-		if ((USART_RX_STA & 0x8000) == 0)
+		if((USART_RX_STA & 0x8000) == 0)
 		{
 			/*判断前一个接收的是不是0x0d*/
-			if (USART_RX_STA & 0x4000)
+			if(USART_RX_STA & 0x4000)
 			{
 				/*如果前一个字节收到0x0d的话，再接收一个字节*/
-				if (Res != 0x0a)
+				if(Res != 0x0a)
 				{
 					/*如果在接收的不是到0x0a，接收错误，重新开始*/
 					USART_RX_STA = 0;
@@ -102,7 +101,7 @@ void USART1_IRQHandler(void)
 			else
 			{
 				/*如果前一个字节还没收到0x0d的话，就接着接收下一个字节*/
-				if (Res == 0x0d)
+				if(Res == 0x0d)
 				{
 					/*如果当前接收到的是0x0d的话*/
 					/*则置位接收到0x0d的标志位 USART_RX_STA[14]*/
@@ -117,7 +116,7 @@ void USART1_IRQHandler(void)
 					USART_RX_STA++;
 
 					/*判断接收到的数据有没有超过最开始设置的缓存区长度*/
-					if (USART_RX_STA > (USART_REC_LEN - 1))
+					if(USART_RX_STA > (USART_REC_LEN - 1))
 					{
 						/*如果超出范围，表明接收数据错误，重新开始接收*/
 						USART_RX_STA = 0;
@@ -153,10 +152,11 @@ void _sys_exit(int x)
 int fputc(int ch, FILE *f)
 {
 	/*循环发送,直到发送完毕*/
-	while ((USART1->SR & 0X40) == 0);
+	while((USART2->SR & 0X40) == 0)
+		;
 
 	/*装载要发送的数据*/
-	USART1->DR = (u8) ch;
+	USART2->DR = (u8) ch;
 
 	return ch;
 }

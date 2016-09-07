@@ -14,7 +14,7 @@ extern u8 USART_RX_BUF[USART_REC_LEN];
 /*接收状态标记(自定义的标志)*/
 extern u16 USART_RX_STA;
 
-/*串口1初始化函数*/
+/*串口2初始化函数*/
 void Usart_Init(u32 bound);
 
 #endif /*__EXPLORE_USART_H_*/

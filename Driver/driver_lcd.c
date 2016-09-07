@@ -2,7 +2,7 @@
 #include "font.h"
 
 /*@notice 本程序只适用4.3寸LCD，主控IC为NT35510*/
-/*@notice LCD驱动版本 Lcd v1.1.3*/
+/*@notice LCD驱动版本 Lcd v1.1.4*/
 
 /*LCD的画笔颜色*/
 u16 POINT_COLOR = 0x0000;
@@ -106,7 +106,8 @@ void LCD_DisplayOff(void)
  */
 void LCD_Delay(u8 i)
 {
-	while (i--);
+	while(i--)
+		;
 }
 
 /**
@@ -138,7 +139,7 @@ u16 LCD_ReadPoint(u16 x, u16 y)
 	u16 b = 0;
 
 	/*判断有没有超出屏幕范围，如果超出屏幕范围，则函数直接返回*/
-	if (x >= lcddev.width || y >= lcddev.height)
+	if(x >= lcddev.width || y >= lcddev.height)
 	{
 		return 0;
 	}
@@ -170,6 +171,7 @@ u16 LCD_ReadPoint(u16 x, u16 y)
 	g = (r & 0xff) << 8;
 
 	/*格式为 RRRRRGGG GGGBBBBB，因此需要移位操作*/
+	/*注意：如 (r >> 11) << 11 这里先右移是为了清空低10位*/
 	return (((r >> 11) << 11) | ((g >> 10) << 5) | (b >> 11));
 }
 
@@ -184,13 +186,13 @@ void LCD_SetCursor(u16 Xpos, u16 Ypos)
 	LCD_WriteCmd(lcddev.setxcmd);
 	LCD_WriteData(Xpos >> 8);
 	LCD_WriteCmd(lcddev.setxcmd + 1);
-	LCD_WriteData(Xpos & 0XFF);
+	LCD_WriteData(Xpos & 0xFF);
 
 	/*设置光标y坐标*/
 	LCD_WriteCmd(lcddev.setycmd);
 	LCD_WriteData(Ypos >> 8);
 	LCD_WriteCmd(lcddev.setycmd + 1);
-	LCD_WriteData(Ypos & 0XFF);
+	LCD_WriteData(Ypos & 0xFF);
 }
 
 /**
@@ -203,37 +205,39 @@ void LCD_ScanDir(u8 dir)
 	u16 regval = 0;
 	u16 dirreg = 0;
 	u16 temp;
-	if (lcddev.dir == 1)
+
+	if(lcddev.dir == SCREEN_HORIZONTAL)
 	{
-		switch (dir)
+		switch(dir)
 		{
-		case 0:
-			dir = 6;
+		case L2R_U2D:
+			dir = D2U_L2R;
 			break;
-		case 1:
-			dir = 7;
+		case L2R_D2U:
+			dir = D2U_R2L;
 			break;
-		case 2:
-			dir = 4;
+		case R2L_U2D:
+			dir = U2D_L2R;
 			break;
-		case 3:
-			dir = 5;
+		case R2L_D2U:
+			dir = U2D_R2L;
 			break;
-		case 4:
-			dir = 1;
+		case U2D_L2R:
+			dir = L2R_D2U;
 			break;
-		case 5:
-			dir = 0;
+		case U2D_R2L:
+			dir = L2R_U2D;
 			break;
-		case 6:
-			dir = 3;
+		case D2U_L2R:
+			dir = R2L_D2U;
 			break;
-		case 7:
-			dir = 2;
+		case D2U_R2L:
+			dir = R2L_U2D;
 			break;
 		}
 	}
-	switch (dir)
+
+	switch(dir)
 	{
 	case L2R_U2D:
 		regval |= (0 << 7) | (0 << 6) | (0 << 5);
@@ -260,13 +264,15 @@ void LCD_ScanDir(u8 dir)
 		regval |= (1 << 7) | (1 << 6) | (1 << 5);
 		break;
 	}
-	dirreg = 0X3600;
 
+	dirreg = 0x3600;
 	LCD_WriteReg(dirreg, regval);
 
-	if (regval & 0x20)
+	/*其实这里就是判断是不是R2L*/
+	if(regval & 0x20)
 	{
-		if (lcddev.width < lcddev.height)
+		/*如果是先上下再左右，则宽要大于高*/
+		if(lcddev.width < lcddev.height)
 		{
 			temp = lcddev.width;
 			lcddev.width = lcddev.height;
@@ -275,7 +281,8 @@ void LCD_ScanDir(u8 dir)
 	}
 	else
 	{
-		if (lcddev.width > lcddev.height)
+		/*如果不是先上下再左右，则高要大于宽*/
+		if(lcddev.width > lcddev.height)
 		{
 			temp = lcddev.width;
 			lcddev.width = lcddev.height;
@@ -319,38 +326,20 @@ void LCD_FastDrawPoint(u16 x, u16 y, u16 color)
 }
 
 /**
- * @Description 背光设置
- * @param pwm 背光等级，0~100，越大越亮
- */
-void LCD_SSDBackLightSet(u8 pwm)
-{
-	/*配置PWM输出*/
-	LCD_WriteCmd(0xBE);
-
-	/*设置PWM频率*/
-	LCD_WriteData(0x05);
-
-	/*设置PWM占空比*/
-	LCD_WriteData(pwm * 2.55);
-
-	LCD_WriteData(0x01);
-	LCD_WriteData(0xFF);
-	LCD_WriteData(0x00);
-	LCD_WriteData(0x00);
-}
-
-/**
  * @Description 设置LCD显示方向
  * @param dir 0,竖屏;1,横屏
  */
 void LCD_DisplayDir(u8 dir)
 {
-	if (dir == SCREEN_VERTICAL)
+	if(dir == SCREEN_VERTICAL)
 	{
 		/*如果是竖屏，设置分辨率，并标好方向*/
 		lcddev.dir = SCREEN_VERTICAL;
 		lcddev.width = 480;
 		lcddev.height = 800;
+
+		/*重新设置LCD控制的屏幕范围*/
+		LCD_SetWindow(0, 0, lcddev.width, lcddev.height);
 	}
 	else
 	{
@@ -358,6 +347,9 @@ void LCD_DisplayDir(u8 dir)
 		lcddev.dir = SCREEN_HORIZONTAL;
 		lcddev.width = 800;
 		lcddev.height = 480;
+
+		/*重新设置LCD控制的屏幕范围*/
+		LCD_SetWindow(0, 0, lcddev.width, lcddev.height);
 	}
 
 	/*设置NT35510写坐标指令和写GRAM指令*/
@@ -418,7 +410,7 @@ void LCD_ClearScreen(u16 color)
 	LCD_WriteRAMPrepare();
 
 	/*开始清屏，绘制所有的点的颜色*/
-	for (index = 0; index < total; index++)
+	for(index = 0; index < total; index++)
 	{
 		LCD->LCD_RAM = color;
 	}
@@ -439,14 +431,14 @@ void LCD_Fill(u16 sx, u16 sy, u16 ex, u16 ey, u16 color)
 	u16 xlen = ex - sx + 1;
 
 	/*因为默认的扫描方向 L2R_U2D，因此可以设置一次绘制一行*/
-	for (i = sy; i <= ey; i++)
+	for(i = sy; i <= ey; i++)
 	{
 		/*设置光标位置(一行的起始位置，指定哪一列)*/
 		LCD_SetCursor(sx, i);
 		LCD_WriteRAMPrepare();
 
 		/*绘制一行的点*/
-		for (j = 0; j < xlen; j++)
+		for(j = 0; j < xlen; j++)
 			LCD->LCD_RAM = color;
 	}
 }
@@ -462,11 +454,11 @@ void LCD_ColorFill(u16 sx, u16 sy, u16 ex, u16 ey, u16 *color)
 	u16 i, j;
 	u16 width = ex - sx + 1;
 	u16 height = ey - sy + 1;
-	for (i = 0; i < height; i++)
+	for(i = 0; i < height; i++)
 	{
 		LCD_SetCursor(sx, sy + i);
 		LCD_WriteRAMPrepare();
-		for (j = 0; j < width; j++)
+		for(j = 0; j < width; j++)
 			LCD->LCD_RAM = color[i * width + j];
 	}
 }
@@ -489,39 +481,39 @@ void LCD_DrawLine(u16 x1, u16 y1, u16 x2, u16 y2)
 	delta_y = y2 - y1;
 	uRow = x1;
 	uCol = y1;
-	if (delta_x > 0)
+	if(delta_x > 0)
 		incx = 1;
-	else if (delta_x == 0)
+	else if(delta_x == 0)
 		incx = 0;
 	else
 	{
 		incx = -1;
 		delta_x = -delta_x;
 	}
-	if (delta_y > 0)
+	if(delta_y > 0)
 		incy = 1;
-	else if (delta_y == 0)
+	else if(delta_y == 0)
 		incy = 0;
 	else
 	{
 		incy = -1;
 		delta_y = -delta_y;
 	}
-	if (delta_x > delta_y)
+	if(delta_x > delta_y)
 		distance = delta_x;
 	else
 		distance = delta_y;
-	for (t = 0; t <= distance + 1; t++)
+	for(t = 0; t <= distance + 1; t++)
 	{
 		LCD_DrawPoint(uRow, uCol);
 		xerr += delta_x;
 		yerr += delta_y;
-		if (xerr > distance)
+		if(xerr > distance)
 		{
 			xerr -= distance;
 			uRow += incx;
 		}
-		if (yerr > distance)
+		if(yerr > distance)
 		{
 			yerr -= distance;
 			uCol += incy;
@@ -553,7 +545,7 @@ void LCD_DrawCircle(u16 x0, u16 y0, u8 r)
 	a = 0;
 	b = r;
 	di = 3 - (r << 1);
-	while (a <= b)
+	while(a <= b)
 	{
 		LCD_DrawPoint(x0 + a, y0 - b);
 		LCD_DrawPoint(x0 + b, y0 - a);
@@ -566,7 +558,7 @@ void LCD_DrawCircle(u16 x0, u16 y0, u8 r)
 		a++;
 
 		/*使用Bresenham算法画圆*/
-		if (di < 0)
+		if(di < 0)
 		{
 			di += 4 * a + 6;
 		}
@@ -597,9 +589,9 @@ void LCD_ShowChar(u16 x, u16 y, u8 num, u8 size, u8 mode)
 	/*得到偏移后的值(ASCII字库是从空格开始取模，所以-' '就是对应字符的字库)*/
 	num = num - ' ';
 
-	for (t = 0; t < csize; t++)
+	for(t = 0; t < csize; t++)
 	{
-		switch (size)
+		switch(size)
 		{
 		case 12:/*调用1206字体*/
 			temp = asc2_1206[num][t];
@@ -614,14 +606,14 @@ void LCD_ShowChar(u16 x, u16 y, u8 num, u8 size, u8 mode)
 			return;
 		}
 
-		for (t1 = 0; t1 < 8; t1++)
+		for(t1 = 0; t1 < 8; t1++)
 		{
-			if (temp & 0x80)
+			if(temp & 0x80)
 			{
 				/*判断最高位是是否为1，如果为1，则画点*/
 				LCD_FastDrawPoint(x, y, POINT_COLOR);
 			}
-			else if (mode == DRAW_REDRAW)
+			else if(mode == DRAW_REDRAW)
 			{
 				/*最高位为0，且为非叠加方式的情况下，重新绘制空的点*/
 				LCD_FastDrawPoint(x, y, BACK_COLOR);
@@ -634,13 +626,13 @@ void LCD_ShowChar(u16 x, u16 y, u8 num, u8 size, u8 mode)
 			y++;
 
 			/*如果超出了屏幕范围，则直接返回*/
-			if (y >= lcddev.height)
+			if(y >= lcddev.height)
 			{
 				return;
 			}
 
 			/*如果绘完了当前这一列*/
-			if ((y - y0) == size)
+			if((y - y0) == size)
 			{
 				/*y坐标回归初始值，开始绘制下一列*/
 				y = y0;
@@ -649,7 +641,7 @@ void LCD_ShowChar(u16 x, u16 y, u8 num, u8 size, u8 mode)
 				x++;
 
 				/*如果超出了屏幕范围，则直接返回*/
-				if (x >= lcddev.width)
+				if(x >= lcddev.width)
 				{
 					return;
 				}
@@ -667,7 +659,7 @@ void LCD_ShowChar(u16 x, u16 y, u8 num, u8 size, u8 mode)
 u32 LCD_Pow(u8 m, u8 n)
 {
 	u32 result = 1;
-	while (n--)
+	while(n--)
 	{
 		result *= m;
 	}
@@ -694,16 +686,16 @@ u8 LCD_ShowInt(u16 x, u16 y, u32 num, u8 size)
 	u8 temp[10];
 
 	/*从高位向低位依次取出每一位的数值，存入temp数组中*/
-	for (i = 9; i >= 0; i--)
+	for(i = 9; i >= 0; i--)
 	{
 		temp[i] = num / LCD_Pow(10, i);
 		num = num % LCD_Pow(10, i);
 	}
 
 	/*从最高位开始，找出第一个不为0的数值*/
-	for (i = 9; i >= 0; i--)
+	for(i = 9; i >= 0; i--)
 	{
-		if (temp[i] != 0 || i == 0)
+		if(temp[i] != 0 || i == 0)
 			break;
 	}
 
@@ -711,7 +703,7 @@ u8 LCD_ShowInt(u16 x, u16 y, u32 num, u8 size)
 	t = i;
 
 	/*在屏幕上绘制*/
-	for (i = 0; i <= t; i++)
+	for(i = 0; i <= t; i++)
 	{
 		LCD_ShowChar(x + size / 2 * i, y, temp[t - i] + 48, size, DRAW_DIRECT);
 	}
@@ -748,13 +740,13 @@ u8 LCD_ShowFloat(u16 x, u16 y, float num, u8 size)
 	LCD_ShowChar(x + length * size / 2, y, '.', size, DRAW_DIRECT);
 
 	/*绘制小数部分*/
-	if (XiaoShu < 10)
+	if(XiaoShu < 10)
 	{
 		LCD_ShowChar(x + (length + 1) * size / 2, y, '0', size, DRAW_DIRECT);
 		LCD_ShowChar(x + (length + 2) * size / 2, y, '0', size, DRAW_DIRECT);
 		LCD_ShowInt(x + (length + 3) * size / 2, y, Conversion, size);
 	}
-	else if (XiaoShu < 100)
+	else if(XiaoShu < 100)
 	{
 		LCD_ShowChar(x + (length + 1) * size / 2, y, '0', size, DRAW_DIRECT);
 		LCD_ShowInt(x + (length + 2) * size / 2, y, Conversion, size);
@@ -782,19 +774,32 @@ void LCD_ShowString(u16 x, u16 y, u16 width, u16 height, u8 size, char *p)
 	height += y;
 
 	/*判断是不是非法字符!*/
-	while ((*p <= '~') && (*p >= ' '))
+	while((*p <= '~') && (*p >= ' '))
 	{
-		if (x >= width)
+		if(x >= width)
 		{
 			x = x0;
 			y += size;
 		}
-		if (y >= height)
+		if(y >= height)
 			break;
 		LCD_ShowChar(x, y, *p, size, 0);
 		x += size / 2;
 		p++;
 	}
+}
+
+/**
+ * @Description 水平居中显示字符串
+ * @param y y坐标
+ * @param *p 字符串起始地址
+ * @param size 字体大小
+ */
+void LCD_CenterShowString(u16 y, char *p, u8 size)
+{
+	u8 length = strlen(p);
+	u32 temp = length * size / 2;
+	LCD_ShowString((lcddev.width - temp) / 2, y, temp, size, size, p);
 }
 
 /**
@@ -914,59 +919,72 @@ void LCD_Init(void)
 	GPIO_PinAFConfig(GPIOG, GPIO_PinSource12, GPIO_AF_FSMC);
 
 	/*第四步：设置FSMC读写时序*/
-	/*地址建立时间（ADDSET）为16个HCLK 1/168M=6ns*16=96ns*/
+	/*这些位定义地址的建立时间，适用于SRAM、ROM和异步总线复用模式的 NOR闪存操作*/
+	/*这里设置地址建立时间(ADDSET)为 16个HCLK 1/168M = 6ns*16 = 96ns*/
 	ReadTiming.FSMC_AddressSetupTime = 16;
-	/*地址保持时间（ADDHLD）模式A未用到*/
+	/*这些位定义地址的保持时间，适用于SRAM、ROM和异步总线复用模式的 NOR闪存操作*/
+	/*这里设置地址保持时间(ADDHLD)模式A未用到，设置为0*/
 	ReadTiming.FSMC_AddressHoldTime = 0x00;
-	/*数据保存时间为60个HCLK = 6*60=360ns*/
-	ReadTiming.FSMC_DataSetupTime = 60;
+	/*这些位定义数据的保持时间，适用于SRAM、ROM和异步总线复用模式的NOR闪存操作*/
+	/*这里设置数据保存时间(DATAST)为 60个HCLK = 6*60 = 360ns*/
+	/*这些位用于定义一次读操作之后在总线上的延迟(仅适用于总线复用模式的NOR闪存操作)*/
+	/*一次读操作之后控制器需要在数据总线上为下次操作送出地址，这个延迟就是为了防止总线冲突*/
+	/*如果扩展的存储器系统不包含总线复用模式的存储器，或最慢的存储器可以在6个HCLK时钟周期内将数据总线恢复到高阻状态*/
+	/*可以设置这个参数为其最小值*/
 	ReadTiming.FSMC_BusTurnAroundDuration = 0x00;
+	/*定义CLK时钟输出信号的周期，以HCLK周期数表示*/
 	ReadTiming.FSMC_CLKDivision = 0x00;
+	/*处于同步成组模式的NOR闪存，需要定义在读取第一个数据之前等待的存储器周期数目*/
+	/*这个时间参数不是以HCLK表示，而是以闪存时钟(CLK)表示*/
+	/*在访问异步NOR闪存、SRAM或ROM时，这个参数不起作用。操作C；RAM时，这个参数必须为0*/
+	/*这里由于是操作SRAM，因此这个参数不起作用*/
 	ReadTiming.FSMC_DataLatency = 0x00;
-	/*模式A*/
+	/*访问模式，这里设置位模式A*/
 	ReadTiming.FSMC_AccessMode = FSMC_AccessMode_A;
 
-	/*地址建立时间*/
 	WriteTiming.FSMC_AddressSetupTime = 3;
-	/*地址保持时间*/
 	WriteTiming.FSMC_AddressHoldTime = 0;
-	/*数据保存时间*/
 	WriteTiming.FSMC_DataSetupTime = 3;
 	WriteTiming.FSMC_BusTurnAroundDuration = 0x00;
 	WriteTiming.FSMC_CLKDivision = 0x00;
 	WriteTiming.FSMC_DataLatency = 0x00;
-	/*模式A*/
 	WriteTiming.FSMC_AccessMode = FSMC_AccessMode_A;
 
 	/*第五步：设置FSMC读写时序*/
-	/*这里我们使用NE4,也就对应BTCR[6],[7]*/
+	/*Nor被分为四块，其中这个参数是说明对那个块编程*/
 	FSMC_NORSRAMInitStructure.FSMC_Bank = FSMC_Bank1_NORSRAM4;
-	/*设置不复用数据地址*/
+	/*地址/数据是否复用，这里设置不复用*/
 	FSMC_NORSRAMInitStructure.FSMC_DataAddressMux = FSMC_DataAddressMux_Disable;
-	/*设置存储器类型为SRAM*/
+	/*存储器类型，这里设置为SRAM*/
 	FSMC_NORSRAMInitStructure.FSMC_MemoryType = FSMC_MemoryType_SRAM;
-	/*存储器数据宽度为16bit*/
+	/*数据总线宽度8位/16位，这里设置为16位*/
 	FSMC_NORSRAMInitStructure.FSMC_MemoryDataWidth = FSMC_MemoryDataWidth_16b;
+	/*是否进行成组模式访问，这里设置不进行成组访问模式*/
 	FSMC_NORSRAMInitStructure.FSMC_BurstAccessMode = FSMC_BurstAccessMode_Disable;
+	/*等待信号有效级性，这里设置为低电平有效*/
 	FSMC_NORSRAMInitStructure.FSMC_WaitSignalPolarity = FSMC_WaitSignalPolarity_Low;
+	/*启用或禁用异步传输信号等，仅异步Flash有效，这里设置禁用*/
 	FSMC_NORSRAMInitStructure.FSMC_AsynchronousWait = FSMC_AsynchronousWait_Disable;
+	/*该位决定控制器是否支持把非对齐的AHB成组操作分割成2次线性操作，该位仅在存储器的成组模式下有效*/
 	FSMC_NORSRAMInitStructure.FSMC_WrapMode = FSMC_WrapMode_Disable;
+	/*当闪存存储器处于成组传输模式时，NWAIT信号指示从闪存存储器出来的数据是否有效或是否需要插入等待周期*/
+	/*决定存储器是在等待状态之前的一个时钟周期产生NWAIT信号，还是在等待状态期间产生NWAIT信号*/
 	FSMC_NORSRAMInitStructure.FSMC_WaitSignalActive = FSMC_WaitSignalActive_BeforeWaitState;
-	/*存储器写使能*/
+	/*指示FSMC是否允许/禁止对存储器的写操作*/
 	FSMC_NORSRAMInitStructure.FSMC_WriteOperation = FSMC_WriteOperation_Enable;
+	/*当闪存存储器处于成组传输模式时，这一位允许/禁止通过NWAIT信号插入等待状态*/
 	FSMC_NORSRAMInitStructure.FSMC_WaitSignal = FSMC_WaitSignal_Disable;
-	/*读写使用不同的时序*/
+	/*允许FSMC使用FSMC_BWTR寄存器，即允许读和写使用不同的时序，这里设置为不允许*/
 	FSMC_NORSRAMInitStructure.FSMC_ExtendedMode = FSMC_ExtendedMode_Enable;
 	FSMC_NORSRAMInitStructure.FSMC_WriteBurst = FSMC_WriteBurst_Disable;
-	/*读时序*/
+	/*读时序配置指针，这里使用上面配置的时序*/
 	FSMC_NORSRAMInitStructure.FSMC_ReadWriteTimingStruct = &ReadTiming;
-	/*写时序*/
+	/*写时序配置指针，这里也使用上面配置的时序*/
 	FSMC_NORSRAMInitStructure.FSMC_WriteTimingStruct = &WriteTiming;
-
 	/*初始化FSMC配置*/
 	FSMC_NORSRAMInit(&FSMC_NORSRAMInitStructure);
 
-	/*使能BANK1*/
+	/*第六步：使能BANK1*/
 	FSMC_NORSRAMCmd(FSMC_Bank1_NORSRAM4, ENABLE);
 
 	delay_ms(100);

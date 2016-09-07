@@ -6,6 +6,7 @@
 #include "explore_usart.h"
 #include "explore_systick.h"
 #include "stdlib.h"
+#include "string.h"
 
 /*储存LCD重要参数集的结构体*/
 typedef struct
@@ -22,6 +23,9 @@ typedef struct
 /*LCD参数对象*/
 extern _lcd_dev lcddev;
 
+/*LCD背光PB15*/
+#define	LCD_LED PBout(15)
+
 #define SCREEN_HORIZONTAL 1
 #define SCREEN_VERTICAL 0
 
@@ -31,9 +35,6 @@ extern _lcd_dev lcddev;
 /*LCD的画笔颜色和背景色*/
 extern u16 POINT_COLOR;
 extern u16 BACK_COLOR;
-
-/*LCD背光PB15*/
-#define	LCD_LED PBout(15)
 
 /*LCD地址结构体,这里其实只使用到了FSMC控制块中的两个16位的地址*/
 typedef struct
@@ -87,7 +88,6 @@ void LCD_SetCursor(u16 Xpos, u16 Ypos);
 void LCD_ScanDir(u8 dir);
 void LCD_DrawPoint(u16 x, u16 y);
 void LCD_FastDrawPoint(u16 x, u16 y, u16 color);
-void LCD_SSDBackLightSet(u8 pwm);
 void LCD_DisplayDir(u8 dir);
 void LCD_SetWindow(u16 sx, u16 sy, u16 width, u16 height);
 
@@ -102,6 +102,7 @@ u32 LCD_Pow(u8 m, u8 n);
 u8 LCD_ShowInt(u16 x, u16 y, u32 num, u8 size);
 u8 LCD_ShowFloat(u16 x, u16 y, float num, u8 size);
 void LCD_ShowString(u16 x, u16 y, u16 width, u16 height, u8 size, char *p);
+void LCD_CenterShowString(u16 y, char *p, u8 size);
 void LCD_Init(void);
 
 #endif /*__DRIVER_LCD_H_*/

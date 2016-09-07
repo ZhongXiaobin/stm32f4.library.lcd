@@ -12,11 +12,12 @@ int main(void)
 	Usart_Init(115200);
 	LED_Init();
 	LCD_Init();
-	
-	POINT_COLOR = BLUE;
-	LCD_ShowString(200, 100, 400, 30, 24, "Bingo");
-	
-	while (1)
+
+	POINT_COLOR = RED;
+	BACK_COLOR = WHITE;
+	LCD_CenterShowString(50, "LCD Display Experiment", 24);
+
+	while(1)
 	{
 		
 	}
